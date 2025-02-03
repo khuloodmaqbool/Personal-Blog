@@ -1,101 +1,216 @@
-import Image from "next/image";
+import { client } from "@/sanity/lib/client";
+import imageUrlBuilder from "@sanity/image-url";
+import { SanityImageSource } from "@sanity/image-url/lib/types/types";
+import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton"; // Assuming you have a Skeleton component set up with shadcn
+import { Button } from "@/components/ui/button";
 
-export default function Home() {
+const builder = imageUrlBuilder(client);
+const urlFor = (source: SanityImageSource) => builder.image(source);
+
+interface Block {
+  _type: "block";
+  children: { text: string }[];
+}
+
+interface BlogPost {
+  _id: string;
+  title: string;
+  authorName: string;
+  publishedAt: string;
+  categories: string[];
+  body: Block[]; // Block Content type
+  slug: { current: string };
+  mainImage: {
+    asset: {
+      url: string;
+    };
+  };
+}
+
+const Home = async () => {
+  const featuredQuery = `*[_type == "post"] | order(publishedAt desc)[0]{
+    title, slug, publishedAt, mainImage,  body
+  }`;
+  const featuredPost: BlogPost = await client.fetch(featuredQuery);
+
+  const recentPostsQuery = `*[_type == "post"] | order(publishedAt desc)[1..4]{
+    title, slug, publishedAt, mainImage
+  }`;
+  const recentPosts: BlogPost[] = await client.fetch(recentPostsQuery);
+
+  const editorPicksQuery = `*[_type == "post"] | order(publishedAt desc)[0..3]{
+    title, slug, publishedAt, mainImage,  body
+  }`;
+  const editorPicks: BlogPost[] = await client.fetch(editorPicksQuery);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="text-white">
+      {/* Header Section */}
+      <div className="container mx-auto px-4 py-12 bg-black">
+        <h1 className="text-9xl text-center font-black tracking-wide uppercase">
+          {" "}
+          <span className="text-[#c6ff41] font-normal">&#123;</span>DEV
+          <span className="text-[#c6ff41] font-normal">&#125;</span> BY{" "}
+          <span className="text-[#c6ff41]">KHULOOD</span>
+        </h1>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Main Featured Post */}
+      <div className="bg-black pb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 container mx-auto px-4 bg-black w-11/12 mx-auto">
+          {featuredPost ? (
+            <div>
+              <img
+                src={
+                  urlFor(featuredPost.mainImage).width(800).height(500).url() ||
+                  "/default-image.jpg"
+                }
+                alt={featuredPost.title}
+                className="rounded-lg object-cover"
+              />
+              <div className="mt-4">
+                <p className="text-sm text-gray-400 ">
+                  {new Date(featuredPost.publishedAt).toLocaleDateString()}
+                </p>
+                <h2 className="text-3xl font-bold">{featuredPost.title}</h2>
+                {
+                  (featuredPost.body &&
+                    featuredPost.body[0]?.children[0]?.text.slice(0, 100)) +
+                    "..."}
+
+                {/* <p className="mt-2">{featuredPost.excerpt}</p> */}
+                <Link href={`/blog/${featuredPost.slug.current}`}>
+                  <p className="text-[#c6ff41] border-b-2 w-fit border-[#c6ff41] mt-4 block">
+                    Read More
+                  </p>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <Skeleton className="h-80 w-full" />
+          )}
+
+          {/* Recent Posts */}
+          <div className="space-y-6">
+            {recentPosts.length > 0
+              ? recentPosts.map((post) => (
+                  <div
+                    key={post.slug.current}
+                    className="flex items-center space-x-4"
+                  >
+                    <img
+                      src={
+                        urlFor(post.mainImage).width(150).height(100).url() ||
+                        "/default-image.jpg"
+                      }
+                      alt={post.title}
+                      className="w-36 h-24 object-cover rounded"
+                    />
+                    <div>
+                      <p className="text-sm text-gray-400">
+                        {new Date(post.publishedAt).toLocaleDateString()}
+                      </p>
+                      <h3 className="text-lg font-semibold">{post.title}</h3>
+                      <Link href={`/blog/${post.slug.current}`}>
+                        <p className="text-[#c6ff41] border-b-2 w-fit border-[#c6ff41]">
+                          Read More
+                        </p>
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              : [...Array(4)].map((_, index) => (
+                  <Skeleton key={index} className="h-24 w-full" />
+                ))}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* about  */}
+      <div className=" py-12 mt-12">
+        <div className="container mx-auto px-4 w-11/12">
+          <h2 className="text-4xl text-black font-bold mb-6">About Us</h2>
+          <div className="lg:flex items-center justify-between space-x-8">
+            <div className="lg:w-1/2">
+              <p className="text-lg text-gray-400 mb-4">
+                We are a team of passionate developers committed to delivering
+                high-quality web experiences. Our goal is to create intuitive,
+                user-friendly designs that help businesses and individuals
+                succeed in the digital world.
+              </p>
+              <p className="text-lg text-gray-400 mb-4">
+                With years of experience in the field, we pride ourselves on our
+                ability to turn ideas into reality by using the latest
+                technologies and best practices. Whether its a simple website
+                or a complex web application, we bring creativity, innovation,
+                and expertise to every project.
+              </p>
+              <Link href="/about">
+                <Button className="destructive">Learn More</Button>
+              </Link>
+            </div>
+            <div className="lg:w-1/2">
+              <img
+                src="/about.png" // Replace with an actual image URL
+                alt="Our Team"
+                className="rounded-lg object-cover w-full h-80"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Editor's Picks */}
+      <div className="bg-black text-gray-200 mb-8 pt-3">
+        <div className="container mx-auto px-4 mt-12 w-11/12 mx-auto">
+          <h2 className="text-4xl font-bold text-white  my-6">MY BLOGS</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {editorPicks.length > 0
+              ? editorPicks.map((post) => (
+                  <div
+                    key={post.slug.current}
+                    className="bg-black text-white rounded-lg shadow-none border-2 border-[#c6ff41] overflow-hidden"
+                  >
+                    <img
+                      src={
+                        urlFor(post.mainImage).width(400).height(250).url() ||
+                        "/default-image.jpg"
+                      }
+                      alt={post.title}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="p-4">
+                      <p className="text-sm  text-gray-500">
+                        {new Date(post.publishedAt).toLocaleDateString()}
+                      </p>
+                      <h3 className="text-lg font-semibold">{post.title}</h3>
+                      <p className="mt-2 text-sm  text-gray-500">
+                        {
+                          (post.body &&
+                            post.body[0]?.children[0]?.text.slice(0, 300)) +
+                            "..."}
+                      </p>{" "}
+                      {/* Show first 100 characters of body */}
+                      <Link href={`/blog/${post.slug.current}`}>
+                        <p className="text-[#c6ff41] border-b-2 border-[#c6ff41] w-fit mt-4">
+                          Read More
+                        </p>
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              : [...Array(4)].map((_, index) => (
+                  <Skeleton key={index} className="h-60 w-full" />
+                ))}
+          </div>
+          <div className="flex justify-center">
+            <Button className="destructive mt-6 my-6">View All</Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
