@@ -2,7 +2,7 @@ import { client } from "@/sanity/lib/client";
 import imageUrlBuilder from "@sanity/image-url";
 import { SanityImageSource } from "@sanity/image-url/lib/types/types";
 import Link from "next/link";
-import { Skeleton } from "@/components/ui/skeleton"; // Assuming you have a Skeleton component set up with shadcn
+import { Skeleton } from "@/components/ui/skeleton"; 
 import { Button } from "@/components/ui/button";
 
 const builder = imageUrlBuilder(client);
